@@ -190,7 +190,7 @@ const RouteMap = ({ stops, stopIdx, onMarkerClick }: RouteMapProps) => {
       }
       prev.push(
         <Polyline
-          key={`${stop.location.lng}-${stop.location.lat}-line`}
+          key={`${stop.location.lng}-${stop.location.lat}-line-${idx}`}
           positions={[getPoint(lastStop.location), getPoint(stop.location)]}
           color={"#FF9090"}
         />
@@ -199,7 +199,7 @@ const RouteMap = ({ stops, stopIdx, onMarkerClick }: RouteMapProps) => {
     }, list);
   }, [stops]);
   return (
-    <RouteMapBox className={classes.mapContainerBox}>
+    <RouteMapBox id="route-map" className={classes.mapContainerBox}>
       <MapContainer
         center={mapRef.current.initialCenter}
         zoom={16}

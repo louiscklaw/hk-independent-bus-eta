@@ -13,6 +13,7 @@ import type { DatabaseContextValue } from "./DbContext";
 import { Workbox } from "workbox-window";
 import { produce, freeze, current } from "immer";
 import type { Location as GeoLocation } from "hk-bus-eta";
+import { ETA_FORMAT_NEXT_TYPES } from "./constants";
 
 type GeoPermission = "opening" | "granted" | "denied" | "closed" | null;
 
@@ -37,16 +38,24 @@ interface AppState {
   /**
    * time display format
    */
-  etaFormat: "exact" | "diff";
+  etaFormat: "exact" | "diff" | "mixed";
   colorMode: "dark" | "light";
   /**
    * energy saving mode
    */
   energyMode: boolean;
   /**
+   * vibrate duration
+   */
+  vibrateDuration: number;
+  /**
    * check if window is on active in mobile
    */
   isVisible: boolean;
+  /**
+   * Home Tab
+   */
+  homeTab: "both" | "saved" | "nearby";
 }
 
 interface AppContextValue extends AppState, DatabaseContextValue {
@@ -57,6 +66,7 @@ interface AppContextValue extends AppState, DatabaseContextValue {
   updateGeolocation: (geoLocation: GeoLocation) => void;
   updateSavedEtas: (keys: string) => void;
   resetUsageRecord: () => void;
+  setHomeTab: (val: string) => void;
   // settings
   updateGeoPermission: (
     geoPermission: AppState["geoPermission"],
@@ -66,6 +76,7 @@ interface AppContextValue extends AppState, DatabaseContextValue {
   toggleEtaFormat: () => void;
   toggleColorMode: () => void;
   toggleEnergyMode: () => void;
+  toggleVibrateDuration: () => void;
   workbox?: Workbox;
 }
 
@@ -96,6 +107,10 @@ const isGeoLocation = (input: unknown): input is GeoLocation => {
 
 const isEtaFormat = (input: unknown): input is AppState["etaFormat"] => {
   return input === "exact" || input === "diff";
+};
+
+const isHomeTab = (input: unknown): input is AppState["homeTab"] => {
+  return input === "both" || input === "saved" || input === "nearby";
 };
 
 const isStrings = (input: unknown[]): input is string[] => {
@@ -129,10 +144,11 @@ export const AppContextProvider = ({
   const getInitialState = (): AppState => {
     const devicePreferColorScheme =
       localStorage.getItem("colorMode") ||
+      (navigator.userAgent === "prerendering" && "dark") || // set default color theme in prerendering to "dark"
       (window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light");
+      window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark");
     const searchRoute = "";
     const geoPermission: unknown = localStorage.getItem("geoPermission");
     const geoLocation: unknown = JSON.parse(
@@ -141,6 +157,7 @@ export const AppContextProvider = ({
     const etaFormat: unknown = localStorage.getItem("etaFormat");
     const savedEtas: unknown = JSON.parse(localStorage.getItem("savedEtas"));
     const hotRoute: unknown = JSON.parse(localStorage.getItem("hotRoute"));
+    const homeTab: unknown = localStorage.getItem("homeTab") || "both";
     return {
       searchRoute: searchRoute,
       selectedRoute: "1-1-CHUK-YUEN-ESTATE-STAR-FERRY",
@@ -157,9 +174,11 @@ export const AppContextProvider = ({
       etaFormat: isEtaFormat(etaFormat) ? etaFormat : "diff",
       colorMode: isColorMode(devicePreferColorScheme)
         ? devicePreferColorScheme
-        : "light",
+        : "dark",
       energyMode: !!JSON.parse(localStorage.getItem("energyMode")) || false,
+      vibrateDuration: JSON.parse(localStorage.getItem("vibrateDuration")) ?? 1,
       isVisible: true,
+      homeTab: isHomeTab(homeTab) ? homeTab : "both",
     };
   };
   type State = AppState;
@@ -176,6 +195,15 @@ export const AppContextProvider = ({
     (searchRoute: string) => {
       setState((state) => {
         state.searchRoute = searchRoute;
+      });
+    },
+    [setState]
+  );
+  const setHomeTab = useCallback(
+    (val: string) => {
+      setState((state) => {
+        state.homeTab = isHomeTab(val) ? val : "both";
+        localStorage.setItem("homeTab", state.homeTab);
       });
     },
     [setState]
@@ -272,7 +300,7 @@ export const AppContextProvider = ({
     setStateRaw(
       produce((state: State) => {
         const prev = state.etaFormat;
-        const etaFormat = prev === "diff" ? "exact" : "diff";
+        const etaFormat = ETA_FORMAT_NEXT_TYPES[prev];
         localStorage.setItem("etaFormat", etaFormat);
         state.etaFormat = etaFormat;
       })
@@ -301,9 +329,23 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  const toggleVibrateDuration = useCallback(() => {
+    setStateRaw(
+      produce((state: State) => {
+        const prevVibrateDuration = state.vibrateDuration;
+        const vibrateDuration = prevVibrateDuration ? 0 : 1;
+        localStorage.setItem(
+          "vibrateDuration",
+          JSON.stringify(vibrateDuration)
+        );
+        state.vibrateDuration = vibrateDuration;
+      })
+    );
+  }, []);
+
   const updateSearchRouteByButton = useCallback(
     (buttonValue: string) => {
-      vibrate(1);
+      vibrate(state.vibrateDuration);
       setTimeout(() => {
         setStateRaw(
           produce((state: State) => {
@@ -325,7 +367,7 @@ export const AppContextProvider = ({
         );
       }, 0);
     },
-    [routeList]
+    [routeList, state.vibrateDuration]
   );
 
   const updateSelectedRoute = useCallback((route: string, seq: string = "") => {
@@ -390,11 +432,13 @@ export const AppContextProvider = ({
       updateGeolocation,
       updateSavedEtas,
       resetUsageRecord,
+      setHomeTab,
       updateGeoPermission,
       toggleRouteFilter,
       toggleEtaFormat,
       toggleColorMode,
       toggleEnergyMode,
+      toggleVibrateDuration,
       workbox,
     };
   }, [
@@ -406,11 +450,13 @@ export const AppContextProvider = ({
     updateGeolocation,
     updateSavedEtas,
     resetUsageRecord,
+    setHomeTab,
     updateGeoPermission,
     toggleRouteFilter,
     toggleEtaFormat,
     toggleColorMode,
     toggleEnergyMode,
+    toggleVibrateDuration,
     workbox,
   ]);
   return (
