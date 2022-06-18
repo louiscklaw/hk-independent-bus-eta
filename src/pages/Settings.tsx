@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useMemo } from "react";
 import AppContext from "../AppContext";
 import {
   Avatar,
   Divider,
   List,
   ListItem,
+  ListItemButton,
   ListItemAvatar,
   ListItemText,
   Paper,
@@ -15,25 +16,18 @@ import { styled } from "@mui/material/styles";
 import {
   GetApp as GetAppIcon,
   Build as BuildIcon,
-  Timer as TimerIcon,
   LocationOn as LocationOnIcon,
   LocationOff as LocationOffIcon,
   MonetizationOn as MonetizationOnIcon,
   DataUsage as DataUsageIcon,
-  Battery20 as Battery20Icon,
-  BatteryStd as BatteryStdIcon,
-  Delete as DeleteIcon,
   GitHub as GitHubIcon,
   Share as ShareIcon,
   Telegram as TelegramIcon,
-  Brightness7 as Brightness7Icon,
-  NightsStay as NightsStayIcon,
-  AllInclusive as AllInclusiveIcon,
-  FilterAlt as FilterAltIcon,
   Fingerprint as FingerprintIcon,
   Gavel as GavelIcon,
-  Vibration as VibrationIcon,
-  DoNotDisturbOn as DoNotDisturbOnIcon,
+  InsertEmoticon as InsertEmoticonIcon,
+  SsidChart as SsidChartIcon,
+  BarChart as BarChartIcon,
 } from "@mui/icons-material";
 import { visuallyHidden } from "@mui/utils";
 import { useTranslation } from "react-i18next";
@@ -45,7 +39,7 @@ import {
 } from "../utils";
 import InstallDialog from "../components/settings/InstallDialog";
 import Donations from "../Donations";
-import { ETA_FORMAT_STR } from "../constants";
+import PersonalizeDialog from "../components/settings/PersonalizeDialog";
 
 const Settings = () => {
   const {
@@ -54,25 +48,21 @@ const Settings = () => {
     renewDb,
     geoPermission,
     updateGeoPermission,
-    resetUsageRecord,
-    isRouteFilter,
-    toggleRouteFilter,
-    etaFormat,
-    toggleEtaFormat,
-    colorMode,
-    toggleColorMode,
-    energyMode,
-    toggleEnergyMode,
     vibrateDuration,
-    toggleVibrateDuration,
+    toggleAnalytics,
+    analytics,
   } = useContext(AppContext);
   const [updating, setUpdating] = useState(false);
   const [showGeoPermissionDenied, setShowGeoPermissionDenied] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isOpenInstallDialog, setIsOpenInstallDialog] = useState(false);
+  const [isPersonalizeDialog, setIsPersonalizeDialog] = useState(false);
 
   const { t, i18n } = useTranslation();
-  const donationId = Math.floor(Math.random() * Donations.length);
+  const donationId = useMemo(
+    () => Math.floor(Math.random() * Donations.length),
+    []
+  );
 
   useEffect(() => {
     setSeoHeader({
@@ -91,8 +81,7 @@ const Settings = () => {
       )}`}</Typography>
       <List>
         {!checkAppInstalled() && (
-          <ListItem
-            button
+          <ListItemButton
             onClick={() => {
               vibrate(vibrateDuration);
               setTimeout(() => setIsOpenInstallDialog(true), 0);
@@ -104,14 +93,12 @@ const Settings = () => {
               </Avatar>
             </ListItemAvatar>
             <ListItemText
-              primary={<ListPrimaryText>{t("安裝")}</ListPrimaryText>}
+              primary={t("安裝")}
               secondary={t("安裝巴士預報 App 到裝置")}
-              secondaryTypographyProps={{ component: "h3", variant: "body2" }}
             />
-          </ListItem>
+          </ListItemButton>
         )}
-        <ListItem
-          button
+        <ListItemButton
           onClick={() => {
             vibrate(vibrateDuration);
             setUpdating(true);
@@ -125,13 +112,8 @@ const Settings = () => {
           </ListItemAvatar>
           <ListItemText
             primary={
-              <ListPrimaryText>
-                {t("架構版本") +
-                  ": " +
-                  schemaVersion +
-                  " - " +
-                  versionMd5.substr(0, 6)}
-              </ListPrimaryText>
+              `${t("架構版本")}: ` +
+              `${schemaVersion} - ${versionMd5.slice(0, 6)}`
             }
             secondary={
               t("更新時間") +
@@ -141,12 +123,10 @@ const Settings = () => {
                 .slice(0, 20)
                 .replace(",", " ")
             }
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
+        </ListItemButton>
         <Divider />
-        <ListItem
-          button
+        <ListItemButton
           onClick={() => {
             vibrate(vibrateDuration);
             if (geoPermission === "granted") {
@@ -168,7 +148,7 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("地理位置定位功能")}</ListPrimaryText>}
+            primary={t("地理位置定位功能")}
             secondary={t(
               geoPermission === "granted"
                 ? "開啟"
@@ -176,115 +156,26 @@ const Settings = () => {
                 ? "開啟中..."
                 : "關閉"
             )}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
-        <ListItem
-          button
+        </ListItemButton>
+        <ListItemButton
           onClick={() => {
             vibrate(vibrateDuration);
-            toggleColorMode();
+            setIsPersonalizeDialog(true);
           }}
         >
           <ListItemAvatar>
             <Avatar>
-              {colorMode === "dark" ? <NightsStayIcon /> : <Brightness7Icon />}
+              <InsertEmoticonIcon />
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={t("黑夜模式")}
-            secondary={t(colorMode === "dark" ? "開啟" : "關閉")}
+            primary={t("個性化設定")}
+            secondary={t("日夜模式、時間格式、路線次序等")}
           />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            vibrate(vibrateDuration);
-            toggleRouteFilter();
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              {isRouteFilter ? <FilterAltIcon /> : <AllInclusiveIcon />}
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("路線篩選")}
-            secondary={t(isRouteFilter ? "只顯示現時路線" : "顯示所有路線")}
-          />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            vibrate(vibrateDuration);
-            toggleEtaFormat();
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              <TimerIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("報時格式")}
-            secondary={t(ETA_FORMAT_STR[etaFormat])}
-          />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            vibrate(vibrateDuration);
-            toggleEnergyMode();
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              {energyMode ? <Battery20Icon /> : <BatteryStdIcon />}
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("省電模式")}
-            secondary={t(!energyMode ? "開啟地圖功能" : "關閉地圖功能")}
-          />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            vibrate(vibrateDuration ^ 1); // tricky, vibrate when switch on and vice versa
-            toggleVibrateDuration();
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              {vibrateDuration ? <VibrationIcon /> : <DoNotDisturbOnIcon />}
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("按鍵震動")}
-            secondary={t(vibrateDuration ? "開啟" : "關閉")}
-          />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            vibrate(vibrateDuration);
-            resetUsageRecord();
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              <DeleteIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={<ListPrimaryText>{t("一鍵清空用戶記錄")}</ListPrimaryText>}
-            secondary={t("包括鎖定和常用報時")}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
-          />
-        </ListItem>
+        </ListItemButton>
         <Divider />
-        <ListItem
-          button
+        <ListItemButton
           onClick={() => {
             vibrate(vibrateDuration);
             triggerShare(
@@ -301,13 +192,11 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("複製應用程式鏈結")}</ListPrimaryText>}
+            primary={t("複製應用程式鏈結")}
             secondary={t("經不同媒介分享給親友")}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
-        <ListItem
-          button
+        </ListItemButton>
+        <ListItemButton
           component="a"
           href={`https://t.me/hkbusapp`}
           target="_blank"
@@ -321,13 +210,40 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("Telegram 交流區")}</ListPrimaryText>}
+            primary={t("Telegram 交流區")}
             secondary={t("歡迎意見及技術交流")}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
-        <ListItem
-          button
+        </ListItemButton>
+        <ListItemButton onClick={toggleAnalytics}>
+          <ListItemAvatar>
+            <Avatar>
+              <BarChartIcon />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText
+            primary={"Google Analytics"}
+            secondary={t(analytics ? "開啟" : "關閉")}
+          />
+        </ListItemButton>
+        <ListItemButton
+          component="a"
+          href={`https://datastudio.google.com/embed/reporting/de590428-525e-4865-9d37-a955204b807a/page/psfZC`}
+          target="_blank"
+          onClick={() => {
+            vibrate(vibrateDuration);
+          }}
+        >
+          <ListItemAvatar>
+            <Avatar>
+              <SsidChartIcon />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText
+            primary={t("統計數據彙整")}
+            secondary={t("整理從 Google 收集的數據")}
+          />
+        </ListItemButton>
+        <ListItemButton
           component="a"
           href={Donations[donationId].url[i18n.language]}
           target="_blank"
@@ -341,14 +257,12 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("捐款支持")}</ListPrimaryText>}
+            primary={t("捐款支持")}
             secondary={Donations[donationId].description[i18n.language]}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
+        </ListItemButton>
         <Divider />
-        <ListItem
-          button
+        <ListItemButton
           component={"a"}
           href={`https://github.com/hkbus/hk-independent-bus-eta`}
           target="_blank"
@@ -362,13 +276,11 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>Source code</ListPrimaryText>}
+            primary={t("Source code")}
             secondary={"GPL-3.0 License"}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
-        <ListItem
-          button
+        </ListItemButton>
+        <ListItemButton
           component={"a"}
           href={`https://www.flaticon.com/free-icon/double-decker_1032967`}
           target="_blank"
@@ -384,13 +296,11 @@ const Settings = () => {
             ></Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("圖標來源")}</ListPrimaryText>}
+            primary={t("圖標來源")}
             secondary={"Freepik from Flaticon"}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
-        </ListItem>
-        <ListItem
-          button
+        </ListItemButton>
+        <ListItemButton
           component={"a"}
           href={`/${i18n.language}/privacy`}
           onClick={() => {
@@ -402,12 +312,9 @@ const Settings = () => {
               <FingerprintIcon />
             </Avatar>
           </ListItemAvatar>
-          <ListItemText
-            primary={<ListPrimaryText>{t("隱私權聲明")}</ListPrimaryText>}
-          />
-        </ListItem>
-        <ListItem
-          button
+          <ListItemText primary={t("隱私權聲明")} />
+        </ListItemButton>
+        <ListItemButton
           component={"a"}
           href={`/${i18n.language}/terms`}
           onClick={() => {
@@ -419,10 +326,8 @@ const Settings = () => {
               <GavelIcon />
             </Avatar>
           </ListItemAvatar>
-          <ListItemText
-            primary={<ListPrimaryText>{t("條款")}</ListPrimaryText>}
-          />
-        </ListItem>
+          <ListItemText primary={t("條款")} />
+        </ListItemButton>
         <ListItem>
           <ListItemAvatar>
             <Avatar>
@@ -430,9 +335,8 @@ const Settings = () => {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={<ListPrimaryText>{t("交通資料來源")}</ListPrimaryText>}
+            primary={t("交通資料來源")}
             secondary={t("資料一線通") + "  https://data.gov.hk"}
-            secondaryTypographyProps={{ component: "h3", variant: "body2" }}
           />
         </ListItem>
       </List>
@@ -463,15 +367,11 @@ const Settings = () => {
         open={isOpenInstallDialog}
         handleClose={() => setIsOpenInstallDialog(false)}
       />
+      <PersonalizeDialog
+        open={isPersonalizeDialog}
+        handleClose={() => setIsPersonalizeDialog(false)}
+      />
     </Root>
-  );
-};
-
-const ListPrimaryText = ({ children }) => {
-  return (
-    <Typography component="h2" variant="body1">
-      {children}
-    </Typography>
   );
 };
 

@@ -32,9 +32,13 @@ interface AppState {
    */
   isRouteFilter: boolean;
   /**
-   * possible Char for RouteInputPad
+   * bus sorting order
    */
-  possibleChar: string[];
+  busSortOrder: "KMB first" | "CTB-NWFB first";
+  /**
+   * number pad order
+   */
+  numPadOrder: "789456123c0b" | "123456789c0b";
   /**
    * time display format
    */
@@ -53,9 +57,9 @@ interface AppState {
    */
   isVisible: boolean;
   /**
-   * Home Tab
+   * enable analytics or not
    */
-  homeTab: "both" | "saved" | "nearby";
+  analytics: boolean;
 }
 
 interface AppContextValue extends AppState, DatabaseContextValue {
@@ -65,18 +69,21 @@ interface AppContextValue extends AppState, DatabaseContextValue {
   // UX
   updateGeolocation: (geoLocation: GeoLocation) => void;
   updateSavedEtas: (keys: string) => void;
+  setSavedEtas: (savedEtas: string[]) => void;
   resetUsageRecord: () => void;
-  setHomeTab: (val: string) => void;
   // settings
   updateGeoPermission: (
     geoPermission: AppState["geoPermission"],
     deniedCallback?: () => void
   ) => void;
   toggleRouteFilter: () => void;
+  toggleBusSortOrder: () => void;
+  toggleNumPadOrder: () => void;
   toggleEtaFormat: () => void;
   toggleColorMode: () => void;
   toggleEnergyMode: () => void;
   toggleVibrateDuration: () => void;
+  toggleAnalytics: () => void; // not
   workbox?: Workbox;
 }
 
@@ -105,12 +112,16 @@ const isGeoLocation = (input: unknown): input is GeoLocation => {
   return false;
 };
 
-const isEtaFormat = (input: unknown): input is AppState["etaFormat"] => {
-  return input === "exact" || input === "diff";
+const isBusSortOrder = (input: unknown): input is AppState["busSortOrder"] => {
+  return input === "KMB first" || input === "CTB-NWFB first";
 };
 
-const isHomeTab = (input: unknown): input is AppState["homeTab"] => {
-  return input === "both" || input === "saved" || input === "nearby";
+const isNumPadOrder = (input: unknown): input is AppState["numPadOrder"] => {
+  return input === "789456123c0b" || input === "123456789c0b";
+};
+
+const isEtaFormat = (input: unknown): input is AppState["etaFormat"] => {
+  return input === "exact" || input === "diff" || input === "mixed";
 };
 
 const isStrings = (input: unknown[]): input is string[] => {
@@ -140,7 +151,6 @@ export const AppContextProvider = ({
   children,
 }: AppContextProviderProps) => {
   const dbContext = useContext(DbContext);
-  const { routeList } = dbContext.db;
   const getInitialState = (): AppState => {
     const devicePreferColorScheme =
       localStorage.getItem("colorMode") ||
@@ -154,10 +164,12 @@ export const AppContextProvider = ({
     const geoLocation: unknown = JSON.parse(
       localStorage.getItem("geolocation")
     );
+    const busSortOrder: unknown = localStorage.getItem("busSortOrder");
+    const numPadOrder: unknown = localStorage.getItem("numPadOrder");
     const etaFormat: unknown = localStorage.getItem("etaFormat");
     const savedEtas: unknown = JSON.parse(localStorage.getItem("savedEtas"));
     const hotRoute: unknown = JSON.parse(localStorage.getItem("hotRoute"));
-    const homeTab: unknown = localStorage.getItem("homeTab") || "both";
+
     return {
       searchRoute: searchRoute,
       selectedRoute: "1-1-CHUK-YUEN-ESTATE-STAR-FERRY",
@@ -170,7 +182,8 @@ export const AppContextProvider = ({
         Array.isArray(savedEtas) && isStrings(savedEtas) ? savedEtas : [],
       isRouteFilter:
         !!JSON.parse(localStorage.getItem("isRouteFilter")) || false,
-      possibleChar: getPossibleChar(searchRoute, routeList) || [],
+      busSortOrder: isBusSortOrder(busSortOrder) ? busSortOrder : "KMB first",
+      numPadOrder: isNumPadOrder(numPadOrder) ? numPadOrder : "123456789c0b",
       etaFormat: isEtaFormat(etaFormat) ? etaFormat : "diff",
       colorMode: isColorMode(devicePreferColorScheme)
         ? devicePreferColorScheme
@@ -178,7 +191,7 @@ export const AppContextProvider = ({
       energyMode: !!JSON.parse(localStorage.getItem("energyMode")) || false,
       vibrateDuration: JSON.parse(localStorage.getItem("vibrateDuration")) ?? 1,
       isVisible: true,
-      homeTab: isHomeTab(homeTab) ? homeTab : "both",
+      analytics: JSON.parse(localStorage.getItem("analytics")) ?? true,
     };
   };
   type State = AppState;
@@ -195,15 +208,6 @@ export const AppContextProvider = ({
     (searchRoute: string) => {
       setState((state) => {
         state.searchRoute = searchRoute;
-      });
-    },
-    [setState]
-  );
-  const setHomeTab = useCallback(
-    (val: string) => {
-      setState((state) => {
-        state.homeTab = isHomeTab(val) ? val : "both";
-        localStorage.setItem("homeTab", state.homeTab);
       });
     },
     [setState]
@@ -296,6 +300,30 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  const toggleBusSortOrder = useCallback(() => {
+    setStateRaw(
+      produce((state: State) => {
+        const prevOrder = state.busSortOrder;
+        const busSortOrder =
+          prevOrder === "KMB first" ? "CTB-NWFB first" : "KMB first";
+        localStorage.setItem("busSortOrder", busSortOrder);
+        state.busSortOrder = busSortOrder;
+      })
+    );
+  }, []);
+
+  const toggleNumPadOrder = useCallback(() => {
+    setStateRaw(
+      produce((state: State) => {
+        const prevOrder = state.numPadOrder;
+        const numPadOrder =
+          prevOrder === "123456789c0b" ? "789456123c0b" : "123456789c0b";
+        localStorage.setItem("numPadOrder", numPadOrder);
+        state.numPadOrder = numPadOrder;
+      })
+    );
+  }, []);
+
   const toggleEtaFormat = useCallback(() => {
     setStateRaw(
       produce((state: State) => {
@@ -325,6 +353,17 @@ export const AppContextProvider = ({
         const energyMode = !prevEnergyMode;
         localStorage.setItem("energyMode", JSON.stringify(energyMode));
         state.energyMode = energyMode;
+      })
+    );
+  }, []);
+
+  const toggleAnalytics = useCallback(() => {
+    setStateRaw(
+      produce((state: State) => {
+        const prev = state.analytics;
+        const analytics = !prev;
+        localStorage.setItem("analytics", JSON.stringify(analytics));
+        state.analytics = analytics;
       })
     );
   }, []);
@@ -362,12 +401,11 @@ export const AppContextProvider = ({
                 ret = prevSearchRoute + buttonValue;
             }
             state.searchRoute = ret;
-            state.possibleChar = getPossibleChar(ret, routeList);
           })
         );
       }, 0);
     },
-    [routeList, state.vibrateDuration]
+    [state.vibrateDuration]
   );
 
   const updateSelectedRoute = useCallback((route: string, seq: string = "") => {
@@ -412,7 +450,18 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  // for re-ordering
+  const setSavedEtas = useCallback((savedEtas) => {
+    setStateRaw(
+      produce((state: State) => {
+        localStorage.setItem("savedEtas", JSON.stringify(savedEtas));
+        state.savedEtas = savedEtas;
+      })
+    );
+  }, []);
+
   const resetUsageRecord = useCallback(() => {
+    localStorage.clear();
     setStateRaw(
       produce((state: State) => {
         state.hotRoute = {};
@@ -431,14 +480,17 @@ export const AppContextProvider = ({
       updateSelectedRoute,
       updateGeolocation,
       updateSavedEtas,
+      setSavedEtas,
       resetUsageRecord,
-      setHomeTab,
       updateGeoPermission,
       toggleRouteFilter,
+      toggleBusSortOrder,
+      toggleNumPadOrder,
       toggleEtaFormat,
       toggleColorMode,
       toggleEnergyMode,
       toggleVibrateDuration,
+      toggleAnalytics,
       workbox,
     };
   }, [
@@ -449,14 +501,17 @@ export const AppContextProvider = ({
     updateSelectedRoute,
     updateGeolocation,
     updateSavedEtas,
+    setSavedEtas,
     resetUsageRecord,
-    setHomeTab,
     updateGeoPermission,
     toggleRouteFilter,
+    toggleBusSortOrder,
+    toggleNumPadOrder,
     toggleEtaFormat,
     toggleColorMode,
     toggleEnergyMode,
     toggleVibrateDuration,
+    toggleAnalytics,
     workbox,
   ]);
   return (
@@ -466,20 +521,3 @@ export const AppContextProvider = ({
 
 export default AppContext;
 export type { AppContextValue };
-
-const getPossibleChar = (
-  searchRoute: string,
-  routeList: Record<string, unknown>
-) => {
-  if (routeList == null) return [];
-  let possibleChar = {};
-  Object.entries(routeList).forEach((route) => {
-    if (route[0].startsWith(searchRoute.toUpperCase())) {
-      let c = route[0].slice(searchRoute.length, searchRoute.length + 1);
-      possibleChar[c] = isNaN(possibleChar[c]) ? 1 : possibleChar[c] + 1;
-    }
-  });
-  return Object.entries(possibleChar)
-    .map((k) => k[0])
-    .filter((k) => k !== "-");
-};

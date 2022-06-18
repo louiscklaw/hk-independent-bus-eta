@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
+import loadable from "@loadable/component";
 import ReactDOM from "react-dom";
 import "./index.css";
-import App from "./App";
 import { DbProvider } from "./DbContext";
 import { AppContextProvider } from "./AppContext";
 import "./i18n";
 import { fetchDbFunc } from "./db";
 import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
-import reportWebVitals, { sendToGoogleAnalytics } from "./reportWebVitals";
 import type { WarnUpMessageData } from "./typing";
+const App = loadable(() => import("./App"));
 
 const isHuman = () => {
   const agents = [
@@ -21,6 +21,7 @@ const isHuman = () => {
     "facebot",
     "ia_archiver",
     "sitecheckerbotcrawler",
+    "chrome-lighthouse",
   ];
   return !navigator.userAgent.match(new RegExp(agents.join("|"), "i"));
 };
@@ -126,9 +127,4 @@ if (isHuman()) {
       );
     });
   }
-
-  // If you want to start measuring performance in your app, pass a function
-  // to log results (for example: reportWebVitals(console.log))
-  // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-  reportWebVitals(sendToGoogleAnalytics);
 }
