@@ -44,7 +44,7 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geolocation]);
 
-  const handleTabChange = (v, rerenderList = false) => {
+  const handleTabChange = (v: HomeTabType, rerenderList = false) => {
     setHomeTab(v);
     localStorage.setItem("homeTab", v);
     if (swipeableList.current && rerenderList) {
@@ -77,9 +77,9 @@ export default Home;
 const paperSx: SxProps<Theme> = {
   background: (theme) =>
     theme.palette.mode === "dark" ? theme.palette.background.default : "white",
-  height: "calc(100vh - 125px)",
   textAlign: "center",
   display: "flex",
   flexDirection: "column",
   overflow: "auto",
+  width: "100%",
 };

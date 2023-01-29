@@ -13,7 +13,8 @@ import AppContext from "../../AppContext";
 import { isHoliday, isRouteAvaliable } from "../../timetable";
 import type { BoardTabType } from "./BoardTabbar";
 import { TRANSPORT_SEARCH_OPTIONS, TRANSPORT_ORDER } from "../../constants";
-import RouteRow from "./RouteRow";
+import RouteRowList from "./RouteRowList";
+import { routeSortFunc } from "../../utils";
 
 interface SwipeableRouteBoardProps {
   boardTab: BoardTabType;
@@ -78,20 +79,24 @@ const SwipeableRoutesBoard = ({
               <FixedSizeList
                 height={height * 0.98}
                 itemCount={coItemDataList[index].routeList.length}
-                itemSize={56}
+                itemSize={64}
                 width={width}
                 itemData={coItemDataList[index]}
                 className={classes.root}
               >
-                {RouteRow}
+                {RouteRowList}
               </FixedSizeList>
             )}
           </AutoSizer>
         ) : (
           <Box sx={noResultSx}>
-            <SentimentVeryDissatisfiedIcon />
-            <Typography variant="h6">"{searchRoute}"</Typography>
-            <Typography variant="h6">{t("route-search-no-result")}</Typography>
+            <SentimentVeryDissatisfiedIcon fontSize="small" />
+            <Box>
+              <Typography variant="h6">"{searchRoute}"</Typography>
+              <Typography variant="h6">
+                {t("route-search-no-result")}
+              </Typography>
+            </Box>
           </Box>
         )}
       </React.Fragment>
@@ -105,11 +110,11 @@ const SwipeableRoutesBoard = ({
         {navigator.userAgent === "prerendering" ? (
           <PrerenderList className={classes.prerenderList}>
             {coItemDataList[0].routeList.map((data, idx) => (
-              <RouteRow
+              <RouteRowList
                 data={coItemDataList[0]}
                 key={`route-${idx}`}
                 index={idx}
-                style={null}
+                style={null} // required by react-window
               />
             ))}
           </PrerenderList>
@@ -157,81 +162,17 @@ const PrerenderList = styled("div")(({ theme }) => ({
   [`&.${classes.prerenderList}`]: {
     height: "100%",
     overflowY: "scroll",
-    "& a": {
-      textDecoration: "none",
-    },
   },
 }));
 
 const noResultSx: SxProps<Theme> = {
-  height: "300px",
+  height: "140px",
   display: "flex",
-  flexDirection: "column",
+  flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "1rem",
   [`& .MuiSvgIcon-root`]: {
-    fontSize: "8rem",
+    fontSize: "4rem",
+    mr: 2,
   },
-};
-
-const routeSortFunc = (a, b, transportOrder: string[]) => {
-  const aRoute = a[0].split("-");
-  const bRoute = b[0].split("-");
-
-  // Exclude A-Z from end of strings, smaller number should come first
-  if (
-    +aRoute[0].replaceAll(/[A-z]$/gi, "") >
-    +bRoute[0].replaceAll(/[A-z]$/gi, "")
-  ) {
-    return 1;
-  } else if (
-    +aRoute[0].replaceAll(/[A-z]$/gi, "") <
-    +bRoute[0].replaceAll(/[A-z]$/gi, "")
-  ) {
-    return -1;
-  }
-
-  // Exclude numbers, smaller alphabet should come first
-  if (
-    aRoute[0].replaceAll(/[0-9]/gi, "") > bRoute[0].replaceAll(/[0-9]/gi, "")
-  ) {
-    return 1;
-  } else if (
-    aRoute[0].replaceAll(/[0-9]/gi, "") < bRoute[0].replaceAll(/[0-9]/gi, "")
-  ) {
-    return -1;
-  }
-
-  // Remove all A-Z, smaller number should come first
-  if (
-    +aRoute[0].replaceAll(/[A-z]/gi, "") > +bRoute[0].replaceAll(/[A-z]/gi, "")
-  ) {
-    return 1;
-  } else if (
-    +aRoute[0].replaceAll(/[A-z]/gi, "") < +bRoute[0].replaceAll(/[A-z]/gi, "")
-  ) {
-    return -1;
-  }
-
-  // Sort by TRANSPORT_ORDER
-  const aCompany = a[1]["co"].sort(
-    (a, b) => transportOrder.indexOf(a) - transportOrder.indexOf(b)
-  );
-  const bCompany = b[1]["co"].sort(
-    (a, b) => transportOrder.indexOf(a) - transportOrder.indexOf(b)
-  );
-
-  if (
-    transportOrder.indexOf(aCompany[0]) > transportOrder.indexOf(bCompany[0])
-  ) {
-    return 1;
-  } else if (
-    transportOrder.indexOf(aCompany[0]) < transportOrder.indexOf(bCompany[0])
-  ) {
-    return -1;
-  }
-
-  // Smaller service Type should come first
-  return aRoute[1] > bRoute[1] ? 1 : -1;
 };

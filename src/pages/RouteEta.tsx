@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import loadable from "@loadable/component";
 import RouteHeader from "../components/route-eta/RouteHeader";
 import StopAccordions from "../components/route-eta/StopAccordions";
@@ -53,22 +53,19 @@ const RouteEta = () => {
   }, [co, stopIdx, stopMap, stops]);
 
   const { t, i18n } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const handleChange = useCallback(
     (newStopIdx: number, expanded: boolean) => {
-      if (expanded) {
-        if (stopIdx !== newStopIdx) {
-          history.replace(`/${i18n.language}/route/${id}/${newStopIdx}`);
-        }
-      }
-      if (stopIdx === newStopIdx && !expanded) {
-        setIsDialogOpen(true);
-      } else {
-        setExpanded(expanded);
-      }
+      if (expanded && stopIdx !== newStopIdx)
+        navigate(`/${i18n.language}/route/${id}/${newStopIdx}`, {
+          replace: true,
+        });
+
+      if (stopIdx === newStopIdx && !expanded) setIsDialogOpen(true);
+      else setExpanded(expanded);
     },
-    [history, i18n.language, id, stopIdx]
+    [navigate, i18n.language, id, stopIdx]
   );
 
   const onMarkerClick = useCallback(
@@ -76,10 +73,16 @@ const RouteEta = () => {
       if (stopIdx === newStopIdx) {
         setIsDialogOpen(true);
       }
-      history.replace(`/${i18n.language}/route/${id}/${newStopIdx}`);
+      navigate(`/${i18n.language}/route/${id}/${newStopIdx}`, {
+        replace: true,
+      });
     },
-    [history, i18n.language, id, stopIdx]
+    [navigate, i18n.language, id, stopIdx]
   );
+
+  const handleStopInfo = useCallback(() => {
+    setIsDialogOpen(true);
+  }, [setIsDialogOpen]);
 
   const handleCloseDialog = useCallback(() => {
     setIsDialogOpen(false);
@@ -178,6 +181,7 @@ const RouteEta = () => {
         stopListExtracted={stopsExtracted}
         expanded={expanded && navigator.userAgent !== "prerendering"}
         handleChange={handleChange}
+        onStopInfo={handleStopInfo}
       />
       <StopDialog
         open={isDialogOpen}

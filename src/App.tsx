@@ -9,21 +9,21 @@ import {
 } from "@mui/material/styles";
 import {
   BrowserRouter as Router,
-  Redirect,
-  Switch,
+  Navigate,
+  Routes,
   Route,
-  useRouteMatch,
 } from "react-router-dom";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
-import { Container, CssBaseline, PaletteMode } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { PaletteMode } from "@mui/material";
 import AppContext from "./AppContext";
-import Header from "./components/layout/Header";
-import Footer from "./components/layout/Footer";
+import Main from "./components/layout/Main";
 import Home from "./pages/Home";
 import { SearchContextProvider } from "./SearchContext";
 import reportWebVitals, { sendToGoogleAnalytics } from "./reportWebVitals";
+import { useTranslation } from "react-i18next";
+import DataImport from "./pages/DataImport";
+import Support from "./pages/Support";
 
 const RouteEta = loadable(() => import("./pages/RouteEta"));
 const RouteBoard = loadable(() => import("./pages/RouteBoard"));
@@ -32,25 +32,11 @@ const Settings = loadable(() => import("./pages/Settings"));
 const PrivacyPolicy = loadable(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = loadable(() => import("./pages/TermsAndConditions"));
 
-const PageSwitch = () => {
-  const { path } = useRouteMatch();
-  return (
-    <SearchContextProvider>
-      <Switch>
-        <Route path={`${path}/route/:id/:panel?`} component={RouteEta} />
-        <Route path={`${path}/settings`} component={Settings} />
-        <Route path={`${path}/board`} component={RouteBoard} />
-        <Route path={`${path}/search`} component={RouteSearch} />
-        <Route path={`${path}/privacy`} component={PrivacyPolicy} />
-        <Route path={`${path}/terms`} component={TermsAndConditions} />
-        <Route path={`${path}`} component={Home} />
-      </Switch>
-    </SearchContextProvider>
-  );
-};
-
 const App = () => {
   const { colorMode, analytics } = useContext(AppContext);
+  const {
+    i18n: { language },
+  } = useTranslation();
 
   // If you want to start measuring performance in your app, pass a function
   // to log results (for example: reportWebVitals(console.log))
@@ -60,27 +46,30 @@ const App = () => {
   const theme = useMemo(() => {
     return createTheme(getThemeTokens(colorMode), [colorMode]);
   }, [colorMode]);
+
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>
         <CacheProvider value={emotionCache}>
-          <AppContainer
-            maxWidth="xs"
-            disableGutters
-            className={classes.container}
-          >
-            <Router>
-              <Route exact path="/">
-                <Redirect to="/zh" />
-              </Route>
-              <Route path="/:lang">
-                <CssBaseline />
-                <Header />
-                <PageSwitch />
-                <Footer />
-              </Route>
-            </Router>
-          </AppContainer>
+          <Router>
+            <SearchContextProvider>
+              <Routes>
+                <Route path="/" element={<Navigate to={`/${language}`} />} />
+                <Route path="/:lang" element={<Main />}>
+                  <Route path={`route/:id`} element={<RouteEta />} />
+                  <Route path={`route/:id/:panel`} element={<RouteEta />} />
+                  <Route path={`settings`} element={<Settings />} />
+                  <Route path={`qr-code`} element={<DataImport />} />
+                  <Route path={`board`} element={<RouteBoard />} />
+                  <Route path={`search`} element={<RouteSearch />} />
+                  <Route path={`privacy`} element={<PrivacyPolicy />} />
+                  <Route path={`terms`} element={<TermsAndConditions />} />
+                  <Route path={`support`} element={<Support />} />
+                  <Route path={``} element={<Home />} />
+                </Route>
+              </Routes>
+            </SearchContextProvider>
+          </Router>
         </CacheProvider>
       </ThemeProvider>
     </StyledEngineProvider>
@@ -88,21 +77,6 @@ const App = () => {
 };
 
 export default App;
-
-const PREFIX = "app";
-
-const classes = {
-  container: `${PREFIX}-container`,
-};
-
-const AppContainer = styled(Container)(({ theme }) => ({
-  [`&.${classes.container}`]: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    height: "100%",
-  },
-}));
 
 const emotionCache = createCache({
   key: "hkbus",
@@ -115,6 +89,10 @@ const emotionCache = createCache({
 const getThemeTokens = (mode: PaletteMode) => ({
   typography: {
     fontFamily: "'Chiron Sans HK Pro WS', sans-serif",
+    h6: {
+      fontSize: "1.2rem",
+      fontWeight: 700,
+    },
   },
   palette: {
     mode,
@@ -126,19 +104,21 @@ const getThemeTokens = (mode: PaletteMode) => ({
           },
           primary: {
             main: "#fedb00", // yellow
+            contrastText: "rgba(0, 0, 0, 0.12)",
           },
         }
       : {
           //dark mode
+          background: {
+            default: "#000",
+            contrast: "rgba(255, 255, 255, 0.12)",
+          },
           primary: {
             main: "#fedb00", // yellow
           },
-          background: {
-            default: "#000",
-          },
         }),
   },
-  components: {
+  elements: {
     MuiCssBaseline: {
       styleOverrides: {
         html: {
@@ -149,17 +129,6 @@ const getThemeTokens = (mode: PaletteMode) => ({
           lineHeight: 1.43,
           scrollbarColor: "#3f3f3f",
           scrollbarWidth: "thin",
-        },
-        "&::-webkit-scrollbar": {
-          width: 4,
-          height: 4,
-        },
-        "&::-webkit-scrollbar-track": {
-          background: "transparent",
-        },
-        "&::-webkit-scrollbar-thumb": {
-          background: "#3f3f3f",
-          borderRadius: 6,
         },
       },
     },

@@ -28,6 +28,9 @@ import {
   InsertEmoticon as InsertEmoticonIcon,
   SsidChart as SsidChartIcon,
   BarChart as BarChartIcon,
+  Info as InfoIcon,
+  SendToMobile as SendToMobileIcon,
+  HelpOutline as HelpIcon,
 } from "@mui/icons-material";
 import { visuallyHidden } from "@mui/utils";
 import { useTranslation } from "react-i18next";
@@ -36,10 +39,12 @@ import {
   setSeoHeader,
   triggerShare,
   checkAppInstalled,
+  iOSRNWebView,
 } from "../utils";
 import InstallDialog from "../components/settings/InstallDialog";
 import Donations from "../Donations";
 import PersonalizeDialog from "../components/settings/PersonalizeDialog";
+import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
   const {
@@ -64,6 +69,8 @@ const Settings = () => {
     []
   );
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     setSeoHeader({
       title: t("設定") + " - " + t(AppTitle),
@@ -79,8 +86,8 @@ const Settings = () => {
       <Typography component="h1" style={visuallyHidden}>{`${t("設定")} - ${t(
         AppTitle
       )}`}</Typography>
-      <List>
-        {!checkAppInstalled() && (
+      <List sx={{ py: 0 }}>
+        {!checkAppInstalled() && !iOSRNWebView() && (
           <ListItemButton
             onClick={() => {
               vibrate(vibrateDuration);
@@ -95,6 +102,38 @@ const Settings = () => {
             <ListItemText
               primary={t("安裝")}
               secondary={t("安裝巴士預報 App 到裝置")}
+            />
+          </ListItemButton>
+        )}
+        {(process.env.REACT_APP_COMMIT_HASH ||
+          process.env.REACT_APP_VERSION) && (
+          <ListItemButton
+            component="a"
+            href={`${
+              process.env.REACT_APP_REPO_URL ||
+              "https://github.com/hkbus/hk-independent-bus-eta"
+            }${
+              process.env.REACT_APP_COMMIT_HASH
+                ? `/commit/${process.env.REACT_APP_COMMIT_HASH}`
+                : ""
+            }`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ListItemAvatar>
+              <Avatar>
+                <InfoIcon />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={`${t("版本")}: ${
+                process.env.REACT_APP_VERSION || "unknown"
+              }${
+                process.env.REACT_APP_COMMIT_HASH
+                  ? ` - ${process.env.REACT_APP_COMMIT_HASH}`
+                  : ""
+              }`}
+              secondary={process.env.REACT_APP_COMMIT_MESSAGE || ""}
             />
           </ListItemButton>
         )}
@@ -174,6 +213,19 @@ const Settings = () => {
             secondary={t("日夜模式、時間格式、路線次序等")}
           />
         </ListItemButton>
+        <ListItemButton
+          onClick={() => {
+            vibrate(vibrateDuration);
+            navigate(`/${i18n.language}/qr-code`);
+          }}
+        >
+          <ListItemAvatar>
+            <Avatar>
+              <SendToMobileIcon />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText primary={t("資料匯出匯入")} />
+        </ListItemButton>
         <Divider />
         <ListItemButton
           onClick={() => {
@@ -196,35 +248,56 @@ const Settings = () => {
             secondary={t("經不同媒介分享給親友")}
           />
         </ListItemButton>
-        <ListItemButton
-          component="a"
-          href={`https://t.me/hkbusapp`}
-          target="_blank"
-          onClick={() => {
-            vibrate(vibrateDuration);
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              <TelegramIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("Telegram 交流區")}
-            secondary={t("歡迎意見及技術交流")}
-          />
-        </ListItemButton>
-        <ListItemButton onClick={toggleAnalytics}>
-          <ListItemAvatar>
-            <Avatar>
-              <BarChartIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={"Google Analytics"}
-            secondary={t(analytics ? "開啟" : "關閉")}
-          />
-        </ListItemButton>
+        {!iOSRNWebView() ? (
+          <ListItemButton
+            component="a"
+            href={`https://t.me/hkbusapp`}
+            target="_blank"
+            onClick={() => {
+              vibrate(vibrateDuration);
+            }}
+          >
+            <ListItemAvatar>
+              <Avatar>
+                <TelegramIcon />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={t("Telegram 交流區")}
+              secondary={t("歡迎意見及技術交流")}
+            />
+          </ListItemButton>
+        ) : (
+          <ListItemButton
+            onClick={() => {
+              vibrate(vibrateDuration);
+              navigate(`/${i18n.language}/support`);
+            }}
+          >
+            <ListItemAvatar>
+              <Avatar>
+                <HelpIcon />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={t("協助")}
+              secondary={t("歡迎意見及技術交流")}
+            />
+          </ListItemButton>
+        )}
+        {!iOSRNWebView() && (
+          <ListItemButton onClick={toggleAnalytics}>
+            <ListItemAvatar>
+              <Avatar>
+                <BarChartIcon />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={"Google Analytics"}
+              secondary={t(analytics ? "開啟" : "關閉")}
+            />
+          </ListItemButton>
+        )}
         <ListItemButton
           component="a"
           href={`https://datastudio.google.com/embed/reporting/de590428-525e-4865-9d37-a955204b807a/page/psfZC`}
@@ -243,28 +316,33 @@ const Settings = () => {
             secondary={t("整理從 Google 收集的數據")}
           />
         </ListItemButton>
-        <ListItemButton
-          component="a"
-          href={Donations[donationId].url[i18n.language]}
-          target="_blank"
-          onClick={() => {
-            vibrate(vibrateDuration);
-          }}
-        >
-          <ListItemAvatar>
-            <Avatar>
-              <MonetizationOnIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={t("捐款支持")}
-            secondary={Donations[donationId].description[i18n.language]}
-          />
-        </ListItemButton>
+        {!iOSRNWebView() && (
+          <ListItemButton
+            component="a"
+            href={Donations[donationId].url[i18n.language]}
+            target="_blank"
+            onClick={() => {
+              vibrate(vibrateDuration);
+            }}
+          >
+            <ListItemAvatar>
+              <Avatar>
+                <MonetizationOnIcon />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={t("捐款支持")}
+              secondary={Donations[donationId].description[i18n.language]}
+            />
+          </ListItemButton>
+        )}
         <Divider />
         <ListItemButton
           component={"a"}
-          href={`https://github.com/hkbus/hk-independent-bus-eta`}
+          href={
+            process.env.REACT_APP_REPO_URL ||
+            `https://github.com/hkbus/hk-independent-bus-eta`
+          }
           target="_blank"
           onClick={() => {
             vibrate(vibrateDuration);

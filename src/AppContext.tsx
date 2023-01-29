@@ -7,13 +7,14 @@ import React, {
   useMemo,
 } from "react";
 import type { ReactNode } from "react";
-import { vibrate } from "./utils";
+import { iOSRNWebView, iOSTracking, vibrate } from "./utils";
 import DbContext from "./DbContext";
 import type { DatabaseContextValue } from "./DbContext";
 import { Workbox } from "workbox-window";
 import { produce, freeze, current } from "immer";
 import type { Location as GeoLocation } from "hk-bus-eta";
 import { ETA_FORMAT_NEXT_TYPES } from "./constants";
+import { useTranslation } from "react-i18next";
 
 type GeoPermission = "opening" | "granted" | "denied" | "closed" | null;
 
@@ -27,6 +28,10 @@ interface AppState {
    */
   hotRoute: Record<string, number>;
   savedEtas: string[];
+  /**
+   * route search history
+   */
+  routeSearchHistory: string[];
   /**
    * filter routes by route schedule against time
    */
@@ -60,6 +65,10 @@ interface AppState {
    * enable analytics or not
    */
   analytics: boolean;
+  /**
+   * ETA refresh interval (millisecond)
+   */
+  refreshInterval: number;
 }
 
 interface AppContextValue extends AppState, DatabaseContextValue {
@@ -70,6 +79,8 @@ interface AppContextValue extends AppState, DatabaseContextValue {
   updateGeolocation: (geoLocation: GeoLocation) => void;
   updateSavedEtas: (keys: string) => void;
   setSavedEtas: (savedEtas: string[]) => void;
+  addSearchHistory: (routeSearchHistory: string) => void;
+  removeSearchHistoryByRouteId: (routeSearchHistoryId: string) => void;
   resetUsageRecord: () => void;
   // settings
   updateGeoPermission: (
@@ -84,6 +95,8 @@ interface AppContextValue extends AppState, DatabaseContextValue {
   toggleEnergyMode: () => void;
   toggleVibrateDuration: () => void;
   toggleAnalytics: () => void; // not
+  updateRefreshInterval: (interval: number) => void;
+  changeLanguage: (lang: "zh" | "en") => void;
   workbox?: Workbox;
 }
 
@@ -168,6 +181,9 @@ export const AppContextProvider = ({
     const numPadOrder: unknown = localStorage.getItem("numPadOrder");
     const etaFormat: unknown = localStorage.getItem("etaFormat");
     const savedEtas: unknown = JSON.parse(localStorage.getItem("savedEtas"));
+    const routeSearchHistory: unknown = JSON.parse(
+      localStorage.getItem("routeSearchHistory")
+    );
     const hotRoute: unknown = JSON.parse(localStorage.getItem("hotRoute"));
 
     return {
@@ -185,15 +201,25 @@ export const AppContextProvider = ({
       busSortOrder: isBusSortOrder(busSortOrder) ? busSortOrder : "KMB first",
       numPadOrder: isNumPadOrder(numPadOrder) ? numPadOrder : "123456789c0b",
       etaFormat: isEtaFormat(etaFormat) ? etaFormat : "diff",
+      routeSearchHistory:
+        Array.isArray(routeSearchHistory) && isStrings(routeSearchHistory)
+          ? routeSearchHistory
+          : [],
       colorMode: isColorMode(devicePreferColorScheme)
         ? devicePreferColorScheme
         : "dark",
       energyMode: !!JSON.parse(localStorage.getItem("energyMode")) || false,
       vibrateDuration: JSON.parse(localStorage.getItem("vibrateDuration")) ?? 1,
       isVisible: true,
-      analytics: JSON.parse(localStorage.getItem("analytics")) ?? true,
+      analytics:
+        iOSRNWebView() && !iOSTracking()
+          ? false
+          : JSON.parse(localStorage.getItem("analytics")) ?? true,
+      refreshInterval:
+        JSON.parse(localStorage.getItem("refreshInterval")) ?? 30000,
     };
   };
+  const { i18n } = useTranslation();
   type State = AppState;
   const [state, setStateRaw] = useState(getInitialState);
   const { geoPermission } = state;
@@ -368,6 +394,18 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  const updateRefreshInterval = useCallback((refreshInterval: number) => {
+    setStateRaw(
+      produce((state: State) => {
+        localStorage.setItem(
+          "refreshInterval",
+          JSON.stringify(refreshInterval)
+        );
+        state.refreshInterval = refreshInterval;
+      })
+    );
+  }, []);
+
   const toggleVibrateDuration = useCallback(() => {
     setStateRaw(
       produce((state: State) => {
@@ -460,6 +498,37 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  const addSearchHistory = useCallback((route) => {
+    setStateRaw(
+      produce((state: State) => {
+        const newSearchHistory = [route, ...state.routeSearchHistory].slice(
+          0,
+          20
+        );
+        localStorage.setItem(
+          "routeSearchHistory",
+          JSON.stringify(newSearchHistory)
+        );
+        state.routeSearchHistory = newSearchHistory;
+      })
+    );
+  }, []);
+
+  const removeSearchHistoryByRouteId = useCallback((routeId) => {
+    setStateRaw(
+      produce((state: State) => {
+        const newSearchHistory = state.routeSearchHistory.filter(
+          (item) => item !== routeId
+        );
+        localStorage.setItem(
+          "routeSearchHistory",
+          JSON.stringify(newSearchHistory)
+        );
+        state.routeSearchHistory = newSearchHistory;
+      })
+    );
+  }, []);
+
   const resetUsageRecord = useCallback(() => {
     localStorage.clear();
     setStateRaw(
@@ -471,6 +540,14 @@ export const AppContextProvider = ({
     );
   }, []);
 
+  const changeLanguage = useCallback(
+    (lang: "zh" | "en") => {
+      i18n.changeLanguage(lang);
+      localStorage.setItem("lang", lang);
+    },
+    [i18n]
+  );
+
   const contextValue = useMemo(() => {
     return {
       ...dbContext,
@@ -481,6 +558,8 @@ export const AppContextProvider = ({
       updateGeolocation,
       updateSavedEtas,
       setSavedEtas,
+      addSearchHistory,
+      removeSearchHistoryByRouteId,
       resetUsageRecord,
       updateGeoPermission,
       toggleRouteFilter,
@@ -491,6 +570,8 @@ export const AppContextProvider = ({
       toggleEnergyMode,
       toggleVibrateDuration,
       toggleAnalytics,
+      updateRefreshInterval,
+      changeLanguage,
       workbox,
     };
   }, [
@@ -502,6 +583,8 @@ export const AppContextProvider = ({
     updateGeolocation,
     updateSavedEtas,
     setSavedEtas,
+    addSearchHistory,
+    removeSearchHistoryByRouteId,
     resetUsageRecord,
     updateGeoPermission,
     toggleRouteFilter,
@@ -512,6 +595,8 @@ export const AppContextProvider = ({
     toggleEnergyMode,
     toggleVibrateDuration,
     toggleAnalytics,
+    updateRefreshInterval,
+    changeLanguage,
     workbox,
   ]);
   return (

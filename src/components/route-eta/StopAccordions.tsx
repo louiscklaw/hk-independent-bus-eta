@@ -12,6 +12,7 @@ import loadable from "@loadable/component";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
+import InfoIcon from "@mui/icons-material/Info";
 import { styled } from "@mui/material/styles";
 import AppContext from "../../AppContext";
 import { useTranslation } from "react-i18next";
@@ -28,6 +29,7 @@ interface StopAccordionsProps {
   stopListExtracted: Array<StopListEntry>;
   expanded: boolean;
   handleChange: (stopIdx: number, expanded: boolean) => void;
+  onStopInfo: () => void;
 }
 const StopAccordions = ({
   routeId,
@@ -36,6 +38,7 @@ const StopAccordions = ({
   routeListEntry,
   stopListExtracted,
   handleChange,
+  onStopInfo,
 }: StopAccordionsProps) => {
   const id = routeId;
   const { savedEtas, updateSavedEtas, energyMode } = useContext(AppContext);
@@ -114,10 +117,16 @@ const StopAccordions = ({
               expanded: classes.accordionSummaryExpanded,
             }}
           >
-            <Typography component="h3" variant="body1">
+            <Typography
+              component="h3"
+              variant="body1"
+              classes={{
+                root: classes.accordionSummaryContentTitle,
+              }}
+            >
               {idx + 1}. {toProperCase(stop.name[i18n.language])}
             </Typography>
-            <Typography variant="caption">
+            <Typography variant="body2">
               {fares && fares[idx] ? t("車費") + ": $" + fares[idx] : ""}
               {faresHoliday && faresHoliday[idx]
                 ? "　　　　" + t("假日車費") + ": $" + faresHoliday[idx]
@@ -132,36 +141,48 @@ const StopAccordions = ({
               routeId={`${id.toUpperCase()}`}
               seq={idx}
             />
-            <div style={{ display: "flex" }}>
-              <IconButton
-                aria-label="direction"
-                onClick={onClickDirection}
-                style={{ background: "transparent" }}
-                size="large"
-              >
-                <DirectionsIcon />
-              </IconButton>
-              <IconButton
-                aria-label="share"
-                onClick={onClickShare}
-                style={{ backgroundColor: "transparent" }}
-                size="large"
-              >
-                <ShareIcon />
-              </IconButton>
-              <IconButton
-                aria-label="favourite"
-                onClick={() => updateSavedEtas(`${id.toUpperCase()}/${idx}`)}
-                style={{ backgroundColor: "transparent" }}
-                size="large"
-              >
-                {savedEtas.includes(`${id.toUpperCase()}/${idx}`) ? (
-                  <StarIcon />
-                ) : (
-                  <StarBorderIcon />
-                )}
-              </IconButton>
-            </div>
+            <Box>
+              <Box>
+                <IconButton
+                  aria-label="direction"
+                  onClick={onClickDirection}
+                  style={{ background: "transparent" }}
+                  size="large"
+                >
+                  <DirectionsIcon />
+                </IconButton>
+                <IconButton
+                  aria-label="stop-info"
+                  onClick={onStopInfo}
+                  style={{ background: "transparent" }}
+                  size="large"
+                >
+                  <InfoIcon />
+                </IconButton>
+              </Box>
+              <Box>
+                <IconButton
+                  aria-label="share"
+                  onClick={onClickShare}
+                  style={{ backgroundColor: "transparent" }}
+                  size="large"
+                >
+                  <ShareIcon />
+                </IconButton>
+                <IconButton
+                  aria-label="favourite"
+                  onClick={() => updateSavedEtas(`${id.toUpperCase()}/${idx}`)}
+                  style={{ backgroundColor: "transparent" }}
+                  size="large"
+                >
+                  {savedEtas.includes(`${id.toUpperCase()}/${idx}`) ? (
+                    <StarIcon />
+                  ) : (
+                    <StarBorderIcon />
+                  )}
+                </IconButton>
+              </Box>
+            </Box>
           </StopAccordionDetails>
         </StopAccordion>
       );
@@ -181,6 +202,7 @@ const StopAccordions = ({
     stopListExtracted,
     t,
     updateSavedEtas,
+    onStopInfo,
   ]);
   return (
     <StopAccordionsBox
@@ -214,6 +236,7 @@ const classes = {
   accordionExpanded: `${PREFIX}-accordion-expanded`,
   accordionSummaryRoot: `${PREFIX}-summary-root`,
   accordionSummaryContent: `${PREFIX}-summary-content`,
+  accordionSummaryContentTitle: `${PREFIX}-summary-content-title`,
   accordionSummaryExpanded: `${PREFIX}-summary-expanded`,
   accordionDetailsRoot: `${PREFIX}-details-root`,
   accordionTimeReport: `${PREFIX}-accordionTimeReport`,
@@ -250,7 +273,9 @@ const StopAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
       theme.palette.mode === "dark"
         ? theme.palette.background.default
         : "rgba(0, 0, 0, .03)",
-    borderBottom: "1px solid rgba(0, 0, 0, .125)",
+    [`&.${classes.accordionSummaryExpanded}`]: {
+      borderBottom: "1px solid rgba(0, 0, 0, .125)",
+    },
     marginBottom: -1,
     minHeight: 44,
     [`&.${classes.accordionSummaryExpanded}`]: {
@@ -263,16 +288,21 @@ const StopAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
         margin: "8px 0",
       },
     },
+    [`& .${classes.accordionSummaryContentTitle}`]: {
+      fontWeight: 700,
+    },
   },
 }));
 
 const StopAccordionDetails = styled(AccordionDetails)(({ theme }) => ({
   [`&.${classes.accordionDetailsRoot}`]: {
-    padding: theme.spacing(2),
+    display: "flex",
+    alignItems: "center",
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(1),
     paddingTop: theme.spacing(1),
     paddingBottom: theme.spacing(1),
     justifyContent: "space-between",
-    display: "flex",
   },
   [`& .${classes.accordionTimeReport}`]: {
     flex: 1,

@@ -55,7 +55,7 @@ async function runStaticServer(port, routes, dir) {
  */
 async function createNewHTMLPage(route, html, dir) {
   try {
-    const fname = decodeURIComponent(route === "/" ? "/index" : route);
+    const fname = route === "/" ? "/index" : route;
     if (route.indexOf("/") !== route.lastIndexOf("/")) {
       const subDir = route.slice(0, route.lastIndexOf("/"));
       await ensureDirExists(`${dir}${subDir}`);
@@ -208,6 +208,14 @@ async function runPuppeteer(baseUrl, routes, dir) {
         );
         if (html) {
           createNewHTMLPage(routes[i], html, dir);
+          if (routes[i].includes("%28") || routes[i].includes("%29")) {
+            // SEO: duplicate file with parenthese
+            createNewHTMLPage(
+              routes[i].replace(/%28/g, "(").replace(/%29/g, ")"),
+              html,
+              dir
+            );
+          }
           break;
         } else return 0;
       } catch (err) {

@@ -9,13 +9,13 @@ import {
   Typography,
 } from "@mui/material";
 import ReorderIcon from "@mui/icons-material/Reorder";
-import { Link, useHistory } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { vibrate } from "../../utils";
 import { styled } from "@mui/material/styles";
 import AppContext from "../../AppContext";
 import { useTranslation } from "react-i18next";
 import SuccinctEtas from "./SuccinctEtas";
-import { getDistance, toProperCase } from "../../utils";
+import { getDistanceWithUnit, toProperCase } from "../../utils";
 import RouteNo from "../route-board/RouteNo";
 import { Location } from "hk-bus-eta";
 
@@ -43,6 +43,10 @@ const DistAndFare = ({
     .filter((v) => v)
     .join(", ");
 
+  const { distance, unit, decimalPlace } = getDistanceWithUnit(
+    location,
+    geolocation
+  );
   if (geoPermission !== "granted" || location.lat === 0) {
     return <>{name + "　" + (fareString ? "(" + fareString + ")" : "")}</>;
   }
@@ -51,8 +55,8 @@ const DistAndFare = ({
     <>
       {name +
         " - " +
-        getDistance(location, geolocation).toFixed(0) +
-        t("米") +
+        distance.toFixed(decimalPlace) +
+        t(unit) +
         "　" +
         (fareString ? "(" + fareString + ")" : "")}
     </>
@@ -79,12 +83,12 @@ const SuccinctTimeReport = ({
     routeList[routeKey] || DefaultRoute;
   const stop = stopList[getStops(co, stops)[parseInt(seq, 10)]] || DefaultStop;
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleClick = (e) => {
     e.preventDefault();
     vibrate(vibrateDuration);
     setTimeout(() => {
-      history.push(`/${i18n.language}/route/${routeId.toLowerCase()}`);
+      navigate(`/${i18n.language}/route/${routeId.toLowerCase()}`);
     }, 0);
   };
 
@@ -97,15 +101,12 @@ const SuccinctTimeReport = ({
         onClick={!disabled ? handleClick : () => {}}
         className={classes.listItem}
       >
-        <ListItemText
-          primary={<RouteNo routeNo={routeNo} />}
-          className={classes.route}
-        />
+        <ListItemText primary={<RouteNo routeNo={routeNo} />} />
         <ListItemText
           primary={
             <Typography
               component="h3"
-              variant="body1"
+              variant="h6"
               color="textPrimary"
               className={classes.fromToWrapper}
             >
@@ -174,22 +175,19 @@ const classes = {
 };
 
 const RootListItem = styled(ListItem)(({ theme }) => ({
+  display: "grid",
+  gap: theme.spacing(1),
+  gridTemplateColumns: "15% 1fr minmax(18%, max-content)",
   [`&.${classes.listItem}`]: {
-    padding: "4px 16px",
+    padding: `${theme.spacing(0.5)} ${theme.spacing(1)}`,
     color: "rgba(0,0,0,0.87)",
   },
-  [`& .${classes.route}`]: {
-    width: "15%",
-  },
   [`& .${classes.routeDest}`]: {
-    width: "50%",
-    whiteSpace: "nowrap",
     overflow: "hidden",
   },
   [`& .${classes.fromToWrapper}`]: {
     display: "flex",
     alignItems: "baseline",
-    fontSize: "1.2rem",
   },
   [`& .${classes.fromToText}`]: {
     fontSize: "0.85rem",

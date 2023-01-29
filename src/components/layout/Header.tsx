@@ -11,8 +11,9 @@ import {
   Theme,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Link, useLocation, useHistory, useRouteMatch } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import SettingsIcon from "@mui/icons-material/Settings";
 import AppContext from "../../AppContext";
 import { vibrate, checkMobile } from "../../utils";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -27,17 +28,19 @@ const Header = () => {
     vibrateDuration,
     geoPermission,
     updateGeolocation,
+    changeLanguage,
   } = useContext(AppContext);
-  const { path } = useRouteMatch();
   const { t, i18n } = useTranslation();
   let location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const weatherCodes = useWeatherCode();
 
-  const handleLanguageChange = (lang) => {
+  const handleLanguageChange = (lang: "zh" | "en") => {
     vibrate(vibrateDuration);
-    history.replace(location.pathname.replace("/" + i18n.language, "/" + lang));
-    i18n.changeLanguage(lang);
+    navigate(location.pathname.replace("/" + i18n.language, "/" + lang), {
+      replace: true,
+    });
+    changeLanguage(lang);
   };
 
   const relocateGeolocation = useCallback(() => {
@@ -66,7 +69,7 @@ const Header = () => {
         setSearchRoute(searchRoute.slice(0, -1));
       } else if (key.length === 1) {
         setSearchRoute(searchRoute + key);
-        history.replace(`/${i18n.language}/board`);
+        navigate(`/${i18n.language}/board`, { replace: true });
       }
     },
     // eslint-disable-next-line
@@ -84,11 +87,11 @@ const Header = () => {
     () => (
       <AppToolbar className={classes.toolbar}>
         <Link
-          to={`/${i18n.language}/board`}
+          to={`/${i18n.language}`}
           onClick={(e) => {
             e.preventDefault();
             vibrate(vibrateDuration);
-            history.push(`/${i18n.language}/board`);
+            navigate(`/${i18n.language}`);
           }}
           rel="nofollow"
         >
@@ -112,26 +115,32 @@ const Header = () => {
               e.target.value in routeList
             ) {
               (document.activeElement as HTMLElement).blur();
-              history.push(`/${i18n.language}/route/${e.target.value}`);
+              navigate(`/${i18n.language}/route/${e.target.value}`);
             }
             setSearchRoute(e.target.value);
           }}
-          onFocus={(e) => {
+          onFocus={() => {
             vibrate(vibrateDuration);
             if (navigator.userAgent !== "prerendering" && checkMobile()) {
               (document.activeElement as HTMLElement).blur();
             }
-            history.replace(`/${i18n.language}/board`);
+            navigate(`/${i18n.language}/board`, { replace: true });
           }}
-          disabled={path.includes("route")}
         />
         <Box className={classes.funcPanel}>
           {weatherCodes.slice(0, 2).map((code) => (
             <Avatar
+              onClick={() =>
+                window.open(
+                  `https://www.hko.gov.hk/${
+                    i18n.language === "zh" ? "tc" : "en"
+                  }/detail.htm`
+                )
+              }
               key={code}
               variant="square"
               src={WeatherIcons[code]}
-              sx={{ height: 24, width: 24, m: 1 }}
+              sx={weatherImg}
             />
           ))}
           {geoPermission === "granted" && (
@@ -154,6 +163,13 @@ const Header = () => {
           >
             {i18n.language !== "zh" ? "繁" : "En"}
           </Button>
+          <IconButton
+            component={Link}
+            to={`/${i18n.language}/settings`}
+            rel="nofollow"
+          >
+            <SettingsIcon fontSize="small" />
+          </IconButton>
         </Box>
       </AppToolbar>
     ),
@@ -194,11 +210,12 @@ const AppToolbar = styled(Toolbar)(({ theme }) => ({
         ? theme.palette.background.default
         : theme.palette.primary.main,
     "& a": {
-      color: "black",
       textDecoration: "none",
     },
     display: "flex",
     justifyContent: "space-between",
+    paddingLeft: theme.spacing(1),
+    paddingRight: theme.spacing(1),
   },
   [`& .${classes.searchRouteInput}`]: {
     maxWidth: "100px",
@@ -222,4 +239,11 @@ const languageSx: SxProps<Theme> = {
   borderRadius: 5,
   fontWeight: 900,
   textTransform: "none",
+};
+
+const weatherImg: SxProps<Theme> = {
+  background: "white",
+  height: 24,
+  width: 24,
+  m: 1,
 };
